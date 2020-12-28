@@ -1,0 +1,57 @@
+firewatch:
+  slack:
+    enable: true
+    token: <SLACK_APP_TOKEN>
+    welcome:
+      enabled: true
+      list: true
+    channel.default: <SLACK_CHANNEL>
+    channel.stats: <SLACK_CHANNEL>
+  email:
+    enable: true
+  auth:
+    enabled: true
+    user:
+      admin:
+        username: admin
+        password: <ADMIN_PWD>
+        role: ADMIN
+    secure.admin.all:
+      url: /**
+      role: ADMIN
+
+jasypt.encryptor:
+  algorithm: PBEWithMD5AndDES
+  iv-generator-classname: org.jasypt.iv.NoIvGenerator
+  password: ${FIREWATCHKEY:}
+
+server.port: 4242
+
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/fw
+    username: <PG_USERNAME>
+    password: <PG_PWD>
+    platform: postgres
+    driverClassName:
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: true
+    database: POSTGRESQL
+    generate-ddl: true
+    hibernate:
+      ddl-auto: update
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: <SMTP_USERNAME>
+    password: <SMTP_PASSWORD>
+    properties.mail.smtp:
+      auth: true
+      connectiontimeout: 5000
+      timeout: 5000
+      writetimeout: 5000
+      starttls.enable: true

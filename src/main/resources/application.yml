@@ -1,0 +1,48 @@
+firewatch:
+  slack:
+    enable: false
+    token: <SLACK_APP_TOKEN>
+    welcome:
+      enabled: true
+      list: true
+    channel.default: <SLACK_CHANNEL>
+    channel.stats: <SLACK_CHANNEL>
+  email:
+    enable: true
+  auth:
+    enabled: false
+    user:
+      admin:
+        username: admin
+        #by default, admin:password
+        password: $2a$10$jOtuVC.WWp9lc5.RRHAsze5dwk7P.EWUstXg8jBYi9fGexcU20bOG
+        role: ADMIN
+    secure.admin.all:
+      url: /**
+      role: ADMIN
+
+jasypt.encryptor:
+  algorithm: PBEWithMD5AndDES
+  iv-generator-classname: org.jasypt.iv.NoIvGenerator
+  password: ${FIREWATCHKEY:mysecretkey}
+
+server.port: 4242
+
+spring:
+  datasource:
+    url: jdbc:h2:file:/tmp/test
+    username: sa
+    password:
+    driverClassName: org.h2.Driver
+  h2.console.enabled: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: <SMTP_USERNAME>
+    password: <SMTP_PASSWORD>
+    properties.mail.smtp:
+      auth: true
+      connectiontimeout: 5000
+      timeout: 5000
+      writetimeout: 5000
+      starttls.enable: true

@@ -1,0 +1,44 @@
+{
+  "defaults" : {
+    "timeout": 1000,
+    "retry": 3,
+    "delay" : 120000,
+    "retry_delay" : 1000,
+    "slack_channel" : "firewatch"
+  },
+  "recipients" :
+    [{
+        "name":"group_a",
+        "emails":["email1@domain.net"]
+    },{
+      "name":"group_b",
+      "emails":["email2@domain.net","email3@domain.net"]
+    }],
+  "elements" : [{
+    "name": "google",
+    "url": "https://www.google.com",
+    "recipients": ["group_a"],
+    "timeout": 200,
+    "retry": 1
+  }, {
+    "name": "stackoverflow",
+    "url": "https://stackoverflow.com",
+    "params": "ENC(Xm75ipSHYyr1F5xP8RuS6g==)",
+    "recipients": ["group_a","group_b"]
+  }, {
+    "name": "my website",
+    "url": "https://www.mysite.net/",
+    "enabled": false,
+    "timeout": 1000,
+    "retry": 3,
+    "delay" : 120000,
+    "retry_delay" : 1000,
+    "params": "/up",
+    "content": "find this content",
+    "auth_type" : "basic",
+    "username": "user",
+    "password": "pwd",
+    "bearer": "when auth_type bearer is used",
+    "slack_channel" : "specific channel"
+  }]
+}
