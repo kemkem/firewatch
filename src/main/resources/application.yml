@@ -6,7 +6,7 @@ firewatch:
       enabled: true
       list: true
     channel.default: <SLACK_CHANNEL>
-    channel.stats: <SLACK_CHANNEL>
+    channel.stats: <SLACK_CHANNEL_STATS>
   email:
     enable: true
   auth:

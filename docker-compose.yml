@@ -5,8 +5,8 @@ services :
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: firewatch
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: <PG_USERNAME>
+      POSTGRES_PASSWORD: <PG_PASSWORD>
       POSTGRES_DB: fw
   admin:
     image: adminer
@@ -19,5 +19,5 @@ services :
     image: kprod/firewatch:latest
     depends_on:
       - db
-#    ports:
-#    - "4242:4242"
+    ports:
+    - "4242:4242"

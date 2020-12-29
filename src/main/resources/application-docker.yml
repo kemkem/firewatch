@@ -31,7 +31,7 @@ spring:
   datasource:
     url: jdbc:postgresql://db:5432/fw
     username: <PG_USERNAME>
-    password: <PG_PWD>
+    password: <PG_PASSWORD>
     platform: postgres
     driverClassName:
   jpa:

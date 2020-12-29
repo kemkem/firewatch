@@ -24,24 +24,10 @@ public class StatController {
     private RepositoryHistoryEvent rhe;
 
     @GetMapping("/data/history")
-    public ResponseEntity<List<EventHistory>> history(@RequestParam String site) {
+    public ResponseEntity<List<EventHistory>> history(@RequestParam String endpoint) {
 
         List<EventHistory> list = rhe.findAll().stream()
-                .filter(e -> e.getName().equals(site))
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(list);
-    }
-
-    @GetMapping("/data/events")
-    public ResponseEntity<List<Event>> events(@RequestParam String site, @RequestParam ChronoUnit unit, @RequestParam int count) {
-
-        ZonedDateTime zdt = ZonedDateTime.now()
-                .minus(count, unit);
-
-        List<Event> list = rh.findAll().stream()
-                .filter(e -> e.getName().equals(site))
-                .filter(e -> e.getEventDate().isAfter(zdt))
+                .filter(e -> e.getName().equals(endpoint))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(list);
@@ -51,6 +37,20 @@ public class StatController {
     public ResponseEntity<List<EventHistory>> history() {
 
         List<EventHistory> list = rhe.findAll().stream()
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(list);
+    }
+
+    @GetMapping("/data/events")
+    public ResponseEntity<List<Event>> events(@RequestParam String endpoint, @RequestParam ChronoUnit unit, @RequestParam int count) {
+
+        ZonedDateTime zdt = ZonedDateTime.now()
+                .minus(count, unit);
+
+        List<Event> list = rh.findAll().stream()
+                .filter(e -> e.getName().equals(endpoint))
+                .filter(e -> e.getEventDate().isAfter(zdt))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(list);

@@ -40,12 +40,6 @@ public class ConsolidateServiceImpl implements ConsolidateService {
     @Autowired
     private AlertService alertService;
 
-    //test
-//    @Scheduled(cron = "0 0/5 * * * ?")
-//    public void consolidateTest() {
-//        consolidate(TimeUnit.event, TimeUnit.hour, ChronoUnit.HOURS, 1, ChronoUnit.HOURS, 1);
-//    }
-
     //every hour
     @Scheduled(cron = "0 0 * * * ?")
     public void consolidateHourly() {
