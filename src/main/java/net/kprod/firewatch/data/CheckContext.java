@@ -148,6 +148,11 @@ public class CheckContext {
             this.bearer = bearer;
             return this;
         }
+
+        public Builder setAuthType(AuthType authType) {
+            this.authType = authType;
+            return this;
+        }
     }
 
     public String getName() {

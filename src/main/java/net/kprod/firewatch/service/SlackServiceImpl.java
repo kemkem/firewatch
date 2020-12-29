@@ -44,7 +44,7 @@ public class SlackServiceImpl implements SlackService {
     }
 
     @Override
-    public void welcomeMessage(String message) {
+    public void defaultChannelMessage(String message) {
         sendChannelMessage(defaultChannel, SLACK_FACE_ROBOT + " " + message);
     }
 

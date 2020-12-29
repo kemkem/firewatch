@@ -36,9 +36,6 @@ public class Configure {
     @Autowired
     private SlackService slackService;
 
-    @Value("${firewatch.slack.channel.default}")
-    private String defaultSlackChannel;
-
     @Value("${firewatch.slack.welcome.enabled}")
     private boolean enabledWelcome;
 
@@ -51,6 +48,7 @@ public class Configure {
     public void configureAtStartup() {
         LOG.info("- Startup configuration loading");
         slackService.configure();
+        slackService.defaultChannelMessage("Starting...");
 
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -66,6 +64,7 @@ public class Configure {
                     .setUrl(e.getUrl())
                     .setParams(e.getParams())
                     .setContent(e.getContent())
+                    .setAuthType(e.getAuthType()!= null ? CheckContext.AuthType.valueOf(e.getAuthType()) : CheckContext.AuthType.none)
                     .setUsername(e.getUsername())
                     .setPassword(e.getPassword())
                     .setBearer(e.getBearer())
@@ -91,7 +90,9 @@ public class Configure {
     }
 
     private void slackSummary() {
-        StringBuilder sbSummary = new StringBuilder()
+
+        if(enabledWelcome) {
+            StringBuilder sbSummary = new StringBuilder()
                 .append("I'm monitoring `").append(getListCC().size()).append("` urls (")
                 .append(
                         getListCC().stream()
@@ -99,12 +100,10 @@ public class Configure {
                                 .map(cc -> "`" + cc.getName() + "`")
                                 .collect(Collectors.joining(", ")))
                 .append("). Have a good day :sun_with_face:");
-
-        if(enabledWelcome) {
-            slackService.welcomeMessage(sbSummary.toString());
+            slackService.defaultChannelMessage(sbSummary.toString());
             if(enabledWelcomeList) {
                 for (CheckContext cc : listCC) {
-                    slackService.welcomeMessage(" >" + cc.toSlack());
+                    slackService.defaultChannelMessage(" >" + cc.toSlack());
                 }
             }
         }
