@@ -9,7 +9,6 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +16,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class MailServiceImpl implements MailService {
-    private Logger LOG = LoggerFactory.getLogger(CheckService.class);
+    private Logger LOG = LoggerFactory.getLogger(WatchService.class);
 
     @Autowired
     private JavaMailSender emailSender;

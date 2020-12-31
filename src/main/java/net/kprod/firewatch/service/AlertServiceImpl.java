@@ -1,21 +1,21 @@
 package net.kprod.firewatch.service;
 
 import net.kprod.firewatch.data.BodyContentCheck;
-import net.kprod.firewatch.data.CheckContext;
-import net.kprod.firewatch.data.CheckResult;
+import net.kprod.firewatch.data.WatchedElement;
+import net.kprod.firewatch.data.WatchResult;
 import net.kprod.firewatch.data.LiveStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AlertServiceImpl implements AlertService {
     public static final String SLACK_FACE_SUNNY = ":sunny:";
     public static final String SLACK_FACE_FIRE = ":fire:";
-    private Logger LOG = LoggerFactory.getLogger(CheckService.class);
+    public static final String SLACK_FACE_RAIN = ":rain_cloud:";
+    private Logger LOG = LoggerFactory.getLogger(WatchService.class);
 
     @Autowired
     private MailService mailService;
@@ -27,26 +27,29 @@ public class AlertServiceImpl implements AlertService {
     private String statChannel;
 
     @Override
-    public void sendCheckAlert(CheckContext cc, CheckResult cr) {
-        String subject = cc.getName() + " alert";
+    public void sendCheckAlert(WatchedElement we, WatchResult wr) {
+        String subject = we.getName() + " alert";
         StringBuilder sbBody = new StringBuilder();
 
         sbBody
-                .append("`").append(cc.getName()).append("`")
-                .append(" (url ").append(cc.getUrl()).append(")")
+                .append("`").append(we.getName()).append("`")
+                .append(" (url ").append(we.getUrl()).append(")")
                 .append(" ")
-                .append(" is `").append(cr.getLiveStatus()).append("`. ");
-        if(cr.getStatus().equals(HttpStatus.I_AM_A_TEAPOT) == false || cr.getReponseTime() != -1) {
+                .append(" is `").append(wr.getLiveStatus()).append("`. ");
+        if(wr.getStatus() != null) {
             sbBody
-                    .append("Http response `").append(cr.getStatus()).append("`")
-                    .append(" response time `" + cr.getReponseTime() + "ms`. ");
+                    .append("Http response `").append(wr.getStatus()).append("`");
         }
-        if(cr.getBodyContentCheck().equals(BodyContentCheck.ko)) {
+        if(wr.getReponseTime() != -1) {
+            sbBody
+                    .append(" response time `" + wr.getReponseTime() + "ms`. ");
+        }
+        if(wr.getBodyContentCheck().equals(BodyContentCheck.ko)) {
             sbBody
                     .append("But content check fails. ");
         }
-        if(cr.getOptException().isPresent()) {
-            Exception e = cr.getOptException().get();
+        if(wr.getOptException().isPresent()) {
+            Exception e = wr.getOptException().get();
             sbBody
                     .append("Exception `")
                     .append(e.getClass().getSimpleName())
@@ -57,18 +60,25 @@ public class AlertServiceImpl implements AlertService {
         String body = sbBody.toString();
 
         //SLACK MESSAGE
-        String face = cr.getLiveStatus().equals(LiveStatus.up) ? SLACK_FACE_SUNNY : SLACK_FACE_FIRE;
-        slackService.sendChannelMessage(cc.getSlackChannel(), face + " " + body);
+        //smiley selection
+        String face = SLACK_FACE_SUNNY;                              //it's up (sunny)
+        if(wr.getBodyContentCheck().equals(BodyContentCheck.ko)) {  //up but content fails (rain)
+            face = SLACK_FACE_RAIN;
+        }
+        if(wr.getLiveStatus().equals(LiveStatus.down)) {            //down (FIRE !)
+            face = SLACK_FACE_FIRE;
+        }
+        slackService.sendChannelMessage(we.getSlackChannel(), face + " " + body);
 
-        if(cc.getListGroups().isEmpty()) {
-            LOG.info("(no alerts defined)");
+        //MAIL MESSAGE
+        if(we.getListGroups() == null) {
+            LOG.info("(no recipients defined)");
             LOG.info("----");
             LOG.info(body);
             LOG.info("----");
         } else {
-            //MAIL MESSAGE
-            LOG.info("send alert to groups " + cc.getListGroups());
-            mailService.sendGroupMessage(cc.getListGroups(), subject, body);
+            LOG.info("send alert to groups " + we.getListGroups());
+            mailService.sendGroupMessage(we.getListGroups(), subject, body);
         }
     }
 

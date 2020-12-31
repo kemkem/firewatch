@@ -1,26 +1,13 @@
 package net.kprod.firewatch.service;
 
 import net.kprod.firewatch.data.*;
-import net.kprod.firewatch.exc.CheckException;
-import net.kprod.firewatch.persistence.Event;
 import net.kprod.firewatch.persistence.EventHistory;
-import net.kprod.firewatch.persistence.RepositoryEvent;
 import net.kprod.firewatch.persistence.RepositoryHistoryEvent;
-import net.kprod.firewatch.sched.RunnableTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -29,7 +16,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class ConsolidateServiceImpl implements ConsolidateService {
-    private Logger LOG = LoggerFactory.getLogger(CheckService.class);
+    private Logger LOG = LoggerFactory.getLogger(WatchService.class);
 
     @Autowired
     private Configure configure;
@@ -74,7 +61,7 @@ public class ConsolidateServiceImpl implements ConsolidateService {
         LOG.info(" clean {} before {} {} - {}", countToCleanAfter, countToCleanAfter, unitToCleanAfter, zdConsolidate);
         LOG.info(" clean events total {}", listToCLean.size());
 
-        for (CheckContext cc : configure.getListCC()) {
+        for (WatchedElement cc : configure.getListCC()) {
             LOG.info("  Consolidate {}", cc.getName());
             List<EventHistory> consolidateByContext = listToConsolidate.stream()
                     .filter(e -> e.getName().equals(cc.getName()))

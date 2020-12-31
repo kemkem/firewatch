@@ -3,12 +3,10 @@ package net.kprod.firewatch.data;
 import net.kprod.firewatch.exc.ConfigException;
 
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class CheckContext {
+public class WatchedElement {
     private String name;
     private String url;
     private String params;
@@ -49,15 +47,15 @@ public class CheckContext {
         private AuthType authType = AuthType.none;
 
 
-        public CheckContext build() throws ConfigException {
-            CheckContext cc = new CheckContext();
+        public WatchedElement build() throws ConfigException {
+            WatchedElement cc = new WatchedElement();
 
             if(authType == AuthType.bearer && bearer == null) {
-                throw new ConfigException(MessageFormat.format("Element [{}] error : bearer value requirer", name));
+                throw new ConfigException("Error : bearer required for element : " + name);
             }
 
             if(authType == AuthType.basic && (username == null || password == null)) {
-                throw new ConfigException(MessageFormat.format("Element [{}] error : username and password required", name));
+                throw new ConfigException("Error : username/password required for element : " + name);
             }
 
             cc.name = name;

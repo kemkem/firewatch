@@ -19,6 +19,7 @@ import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -31,8 +32,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
-public class CheckServiceImpl implements CheckService {
-    private Logger LOG = LoggerFactory.getLogger(CheckService.class);
+public class WatchServiceImpl implements WatchService {
+    private Logger LOG = LoggerFactory.getLogger(WatchService.class);
 
     @Autowired
     private ThreadPoolTaskScheduler taskScheduler;
@@ -73,72 +74,84 @@ public class CheckServiceImpl implements CheckService {
     }
 
     @Override
-    public void checkUrl(CheckContext cc) {
+    public void checkUrl(WatchedElement we, boolean boot) {
 
-        if(cc.isActive() == false) {
+        if(we.isActive() == false) {
             return;
         }
 
         boolean state = false;
-        int count = cc.getRetry();
+        //if boot mode, do not retry
+        int count = boot == false ? we.getRetry() : 0;
 
-        CheckResult cr = check(cc);
+        WatchResult wr = check(we);
 
-        if (cr.getCheckStatus().equals(CheckStatus.ok)) {
+        //TODO : when last status is down, and new status is not up or down, there's no change (eg : down -> content_fails)
+
+        //TODO need to be optimized
+        List<Event> events = repositoryEvent.findEventByNameOrderByEventDateDesc(we.getName());
+        Optional<Event> optLastEvent = events.stream().findFirst();
+
+        if (wr.getWatchStatus().equals(WatchStatus.ok)) {
             state = true;
         } else {
-            LOG.warn(cc.getName() + " failed " + (cc.getRetry() > 0 ? "(retries left " + cc.getRetry() + ")" : ""));
+
+            //do not retry if last event was down
+            if(optLastEvent.isPresent() && optLastEvent.get().getStatus().equals("down")) {
+                count = 0;
+                LOG.warn(we.getName() + " still fails");
+            } else {
+                LOG.warn(we.getName() + " failed " + (we.getRetry() > 0 ? "(retries left " + we.getRetry() + ")" : ""));
+            }
+
             while(state == false && count > 0) {
-                sleep(cc.getRetry_delay());
-                cr = check(cc);
-                state = cr.getCheckStatus().equals(CheckStatus.ok);
+                sleep(we.getRetry_delay());
+                wr = check(we);
+                state = wr.getWatchStatus().equals(WatchStatus.ok);
                 count--;
                 if(count > 0) {
-                    LOG.warn(cc.getName() + " retry #" + (count + 1) + " failed (retries left " + (cc.getRetry() - count) + ")");
+                    LOG.warn(we.getName() + " retry #" + (count + 1) + " failed (retries left " + (we.getRetry() - count) + ")");
                 } else {
-                    LOG.warn(cc.getName() + " retry #" + (count + 1) + " failed");
+                    LOG.warn(we.getName() + " retry #" + (count + 1) + " failed");
                 }
             }
         }
-        List<Event> events = repositoryEvent.findEventByNameOrderByEventDateDesc(cc.getName());
-        Optional<Event> optLastEvent = events.stream().findFirst();
         if(state == false) {
-
             if(optLastEvent.isPresent()) {
                 Event lastEvent = optLastEvent.get();
                 if(lastEvent.getStatus().equals("down")) {
-                    LOG.error(cc.getName() + " is still down");
+                    LOG.error(we.getName() + " is still down");
                 } else {
-                    LOG.error(cc.getName() + " is down");
-                    Event event = new Event(ZonedDateTime.now(), cc.getName(), "down");
+                    LOG.error(we.getName() + " is down");
+                    Event event = new Event(ZonedDateTime.now(), we.getName(), "down");
                     repositoryEvent.save(event);
-                    alertService.sendCheckAlert(cc, cr);
+                    alertService.sendCheckAlert(we, wr);
                 }
             } else {
-                LOG.error(cc.getName() + " is down");
-                Event event = new Event(ZonedDateTime.now(), cc.getName(), "down");
+                LOG.error(we.getName() + " is down");
+                Event event = new Event(ZonedDateTime.now(), we.getName(), "down");
                 repositoryEvent.save(event);
-                alertService.sendCheckAlert(cc, cr);
+                alertService.sendCheckAlert(we, wr);
             }
         } else {
             if(optLastEvent.isPresent()) {
                 Event lastEvent = optLastEvent.get();
                 if(lastEvent.getStatus().equals("down")) {
-                    LOG.info(cc.getName() + " is up again");
-                    Event event = new Event(ZonedDateTime.now(), cc.getName(), "up");
+                    LOG.info(we.getName() + " is up again");
+                    Event event = new Event(ZonedDateTime.now(), we.getName(), "up");
                     repositoryEvent.save(event);
-                    alertService.sendCheckAlert(cc, cr);
+                    alertService.sendCheckAlert(we, wr);
                 } else {
-                    LOG.info(cc.getName() + " is up");
+                    LOG.info(we.getName() + " is up");
                 }
             } else {
-                LOG.info(cc.getName() + " is up");
-                Event event = new Event(ZonedDateTime.now(), cc.getName(), "up");
+                LOG.info(we.getName() + " is up");
+                Event event = new Event(ZonedDateTime.now(), we.getName(), "up");
                 repositoryEvent.save(event);
-                alertService.sendCheckAlert(cc, cr);
+                alertService.sendCheckAlert(we, wr);
             }
         }
-        EventHistory eH = new EventHistory(cc.getName(), TimeUnit.event, cr.getLiveStatus(), cr.getReponseTime());
+        EventHistory eH = new EventHistory(we.getName(), TimeUnit.event, wr.getLiveStatus(), wr.getReponseTime());
         repositoryHistoryEvent.save(eH);
     }
 
@@ -148,37 +161,6 @@ public class CheckServiceImpl implements CheckService {
         } catch (InterruptedException interruptedException) {
             interruptedException.printStackTrace();
         }
-    }
-
-    private CheckResult check(CheckContext cc) {
-        CheckResult checkResult;
-        try {
-            CheckResponse res = checkTimeout(cc);
-            String body = res.getRes().getBody();
-            checkResult = new CheckResult(res.getRes().getStatusCode(), LiveStatus.up, res.getDuration() / 1000000);
-
-            LOG.info(cc.getName() + " " + res.getRes().getStatusCode() + " in " + (res.getDuration() / 1000000) + "ms");
-            if(cc.getContent() != null && cc.getContent().isEmpty() == false) {
-                if(body == null || body.contains(cc.getContent()) == false) {
-                    checkResult.setBodyContentCheck(BodyContentCheck.ko);
-                    checkResult.setCheckStatus(CheckStatus.ko);
-                }
-                else {
-                    checkResult.setBodyContentCheck(BodyContentCheck.ok);
-                    checkResult.setCheckStatus(CheckStatus.ok);
-                }
-            } else {
-                checkResult.setBodyContentCheck(BodyContentCheck.not_required);
-                checkResult.setCheckStatus(CheckStatus.ok);
-            }
-        } catch (CheckException e) {
-            LOG.error(cc.getName() + " " + e.getMessage());
-            checkResult = new CheckResult(HttpStatus.I_AM_A_TEAPOT, LiveStatus.down, -1);
-            checkResult.setBodyContentCheck(BodyContentCheck.not_required);
-            checkResult.setCheckStatus(CheckStatus.ko);
-            checkResult.setException(e);
-        }
-        return checkResult;
     }
 
     class CheckResponse {
@@ -199,6 +181,56 @@ public class CheckServiceImpl implements CheckService {
         }
     }
 
+    private WatchResult check(WatchedElement cc) {
+        WatchResult watchResult;
+        try {
+            CheckResponse res = checkTimeout(cc);
+            String body = res.getRes().getBody();
+
+            watchResult = new WatchResult()
+                    .setStatus(res.getRes().getStatusCode())
+                    .setWatchStatus(WatchStatus.ko)
+                    .setBodyContentCheck(BodyContentCheck.not_required)
+                    .setLiveStatus(LiveStatus.up)
+                    .setReponseTime(res.getDuration() / 1000000);
+
+            LOG.info(cc.getName() + " " + res.getRes().getStatusCode() + " in " + (res.getDuration() / 1000000) + "ms");
+            if(cc.getContent() != null && cc.getContent().isEmpty() == false) {
+                if(body == null || body.contains(cc.getContent()) == false) {
+                    watchResult.setBodyContentCheck(BodyContentCheck.ko);
+                    watchResult.setWatchStatus(WatchStatus.ko);
+                }
+                else {
+                    watchResult.setBodyContentCheck(BodyContentCheck.ok);
+                    watchResult.setWatchStatus(WatchStatus.ok);
+                }
+            } else {
+                watchResult.setBodyContentCheck(BodyContentCheck.not_required);
+                watchResult.setWatchStatus(WatchStatus.ok);
+            }
+        } catch (CheckException e) {
+            LOG.error(cc.getName() + " " + e.getMessage());
+
+            watchResult = new WatchResult()
+                    .setWatchStatus(WatchStatus.ko)
+                    .setBodyContentCheck(BodyContentCheck.not_required)
+                    .setLiveStatus(LiveStatus.down)
+                    .setReponseTime(-1);
+
+            if(e.getCause() != null && e.getCause() instanceof Exception) {
+                watchResult.setOptException(Optional.of((Exception) e.getCause()));
+            } else {
+                watchResult.setOptException(Optional.of(e));
+            }
+
+            if(e.getCause() instanceof HttpClientErrorException) {
+                HttpClientErrorException httpClientErrorException = (HttpClientErrorException) e.getCause();
+                watchResult.setStatus(httpClientErrorException.getStatusCode());
+            }
+        }
+        return watchResult;
+    }
+
     void basicAuth(HttpHeaders h, String username, String password) {
         String auth = username + ":" + password;
         byte[] encodedAuth = Base64.encodeBase64(
@@ -212,7 +244,7 @@ public class CheckServiceImpl implements CheckService {
         h.set("Authorization", authHeader);
     }
 
-    private CheckResponse checkTimeout(CheckContext cc) throws CheckException {
+    private CheckResponse checkTimeout(WatchedElement cc) throws CheckException {
         RestTemplate restTemplate = new RestTemplate(getClientHttpRequestFactory(cc.getTimeout()));
 
         long duration = 0;
@@ -224,7 +256,7 @@ public class CheckServiceImpl implements CheckService {
 
             String url = cc.getUrl() + (cc.getParams() == null ? "" : decryptCandidate(cc.getParams()));
 
-            if(cc.getAuthType() == CheckContext.AuthType.basic) {
+            if(cc.getAuthType() == WatchedElement.AuthType.basic) {
 
                 basicAuth(h, decryptCandidate(cc.getUsername()), decryptCandidate(cc.getPassword()));
                 HttpEntity e = new HttpEntity(h);
@@ -235,7 +267,7 @@ public class CheckServiceImpl implements CheckService {
                         e,
                         String.class);
 
-            } else if (cc.getAuthType() == CheckContext.AuthType.bearer) {
+            } else if (cc.getAuthType() == WatchedElement.AuthType.bearer) {
                 bearer(h, decryptCandidate(cc.getBearer()));
                 HttpEntity e = new HttpEntity(h);
 
@@ -244,7 +276,7 @@ public class CheckServiceImpl implements CheckService {
                         HttpMethod.GET,
                         e,
                         String.class);
-            } else if (cc.getAuthType() == CheckContext.AuthType.none) {
+            } else if (cc.getAuthType() == WatchedElement.AuthType.none) {
                 res = restTemplate.getForEntity(url, String.class);
             }
             duration = System.nanoTime() - duration;
@@ -258,8 +290,8 @@ public class CheckServiceImpl implements CheckService {
         }
     }
 
-    public void setCheckContextItem(CheckContext cc) {
-        LOG.info(" - Create " + cc.toString());
+    public void watchElement(WatchedElement cc) {
+        LOG.info(" - Added " + cc.toString());
         Event event = new Event(ZonedDateTime.now(), cc.getName(), "up");
         repositoryEvent.save(event);
         taskScheduler.scheduleWithFixedDelay(new RunnableTask(ctx, cc), cc.getDelay());

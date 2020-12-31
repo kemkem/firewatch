@@ -3,22 +3,15 @@ package net.kprod.firewatch.service;
 import com.slack.api.Slack;
 import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
-import com.slack.api.methods.response.chat.ChatPostMessageResponse;
-import net.kprod.firewatch.data.CheckContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import javax.annotation.PostConstruct;
-import java.util.Comparator;
-import java.util.stream.Collectors;
 
 @Service
 public class SlackServiceImpl implements SlackService {
     public static final String SLACK_FACE_ROBOT = ":robot_face:";
-    private Logger LOG = LoggerFactory.getLogger(CheckService.class);
+    private Logger LOG = LoggerFactory.getLogger(WatchService.class);
 
     @Value("${firewatch.slack.token}")
     private String token;

@@ -1,21 +1,21 @@
 package net.kprod.firewatch.sched;
 
-import net.kprod.firewatch.data.CheckContext;
-import net.kprod.firewatch.service.CheckService;
+import net.kprod.firewatch.data.WatchedElement;
+import net.kprod.firewatch.service.WatchService;
 import org.springframework.context.ApplicationContext;
 
 public class RunnableTask implements Runnable{
 	private ApplicationContext ctx;
-	private CheckContext checkContext;
+	private WatchedElement watchedElement;
 
-	public RunnableTask(ApplicationContext ctx, CheckContext checkContext){
+	public RunnableTask(ApplicationContext ctx, WatchedElement watchedElement){
 		this.ctx = ctx;
-		this.checkContext = checkContext;
+		this.watchedElement = watchedElement;
 	}
 
 	@Override
 	public void run() {
-		CheckService checkService = ctx.getBean(CheckService.class);
-		checkService.checkUrl(checkContext);
+		WatchService watchService = ctx.getBean(WatchService.class);
+		watchService.checkUrl(watchedElement, false);
 	}
 }

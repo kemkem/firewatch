@@ -1,7 +1,7 @@
 package net.kprod.firewatch.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.kprod.firewatch.data.CheckContext;
+import net.kprod.firewatch.data.WatchedElement;
 import net.kprod.firewatch.data.config.Element;
 import net.kprod.firewatch.data.config.FWConfigJson;
 import net.kprod.firewatch.data.config.Recipient;
@@ -28,7 +28,7 @@ public class Configure {
     private String filepath;
 
     @Autowired
-    private CheckService checkService;
+    private WatchService watchService;
 
     @Autowired
     private MailService mailService;
@@ -42,7 +42,9 @@ public class Configure {
     @Value("${firewatch.slack.welcome.list}")
     private boolean enabledWelcomeList;
 
-    private List<CheckContext> listCC = new ArrayList<>();
+    private List<WatchedElement> listCC = new ArrayList<>();
+
+    //TODO startup with optional mail service
 
     @PostConstruct
     public void configureAtStartup() {
@@ -59,12 +61,12 @@ public class Configure {
             }
 
             for (Element e : configJson.getElements()) {
-                CheckContext cc = new CheckContext.Builder()
+                WatchedElement cc = new WatchedElement.Builder()
                     .setName(e.getName())
                     .setUrl(e.getUrl())
                     .setParams(e.getParams())
                     .setContent(e.getContent())
-                    .setAuthType(e.getAuthType()!= null ? CheckContext.AuthType.valueOf(e.getAuthType()) : CheckContext.AuthType.none)
+                    .setAuthType(e.getAuthType()!= null ? WatchedElement.AuthType.valueOf(e.getAuthType()) : WatchedElement.AuthType.none)
                     .setUsername(e.getUsername())
                     .setPassword(e.getPassword())
                     .setBearer(e.getBearer())
@@ -78,12 +80,19 @@ public class Configure {
                     .build();
 
                     listCC.add(cc);
-                    checkService.checkUrl(cc);
+                    watchService.checkUrl(cc, true);
+
             }
         } catch (IOException e) {
             LOG.error("Failed to load config", e);
+            throw new RuntimeException(e);
         } catch (ConfigException e) {
             LOG.error("Failed to configure an element", e);
+            throw new RuntimeException(e);
+        }
+
+        for(WatchedElement cc : listCC) {
+            watchService.watchElement(cc);
         }
 
         slackSummary();
@@ -96,20 +105,20 @@ public class Configure {
                 .append("I'm monitoring `").append(getListCC().size()).append("` urls (")
                 .append(
                         getListCC().stream()
-                                .sorted(Comparator.comparing(CheckContext::getName))
+                                .sorted(Comparator.comparing(WatchedElement::getName))
                                 .map(cc -> "`" + cc.getName() + "`")
                                 .collect(Collectors.joining(", ")))
                 .append("). Have a good day :sun_with_face:");
             slackService.defaultChannelMessage(sbSummary.toString());
             if(enabledWelcomeList) {
-                for (CheckContext cc : listCC) {
+                for (WatchedElement cc : listCC) {
                     slackService.defaultChannelMessage(" >" + cc.toSlack());
                 }
             }
         }
     }
 
-    public List<CheckContext> getListCC() {
+    public List<WatchedElement> getListCC() {
         return listCC;
     }
 }
