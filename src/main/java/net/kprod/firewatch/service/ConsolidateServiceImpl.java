@@ -45,6 +45,7 @@ public class ConsolidateServiceImpl implements ConsolidateService {
         ZonedDateTime zdConsolidate = ZonedDateTime.now().minus(countToConsolidate, unitToConsolidate);
         ZonedDateTime zdClean = ZonedDateTime.now().minus(countToCleanAfter, unitToCleanAfter);
 
+        //TODO filter disabled
         List<EventHistory> listToConsolidate = list.stream()
                 .filter(e -> e.getTimeUnit().equals(consolidateTimeUnit))
                 .filter(e -> e.getEventDate().isAfter(zdConsolidate))
