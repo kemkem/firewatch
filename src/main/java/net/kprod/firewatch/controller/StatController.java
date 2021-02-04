@@ -1,5 +1,6 @@
 package net.kprod.firewatch.controller;
 
+import net.kprod.firewatch.data.TimeUnit;
 import net.kprod.firewatch.data.WatchedElement;
 import net.kprod.firewatch.persistence.Event;
 import net.kprod.firewatch.persistence.EventHistory;
@@ -46,24 +47,15 @@ public class StatController {
     }
 
     @GetMapping("/data/performance/{site}/all")
-    public ResponseEntity<List<EventHistory>> performance(@PathVariable String site) {
+    public ResponseEntity<List<EventHistory>> performance(@PathVariable String site, @RequestParam TimeUnit timeUnitFilter) {
 
         List<EventHistory> list = rhe.findAll().stream()
                 .filter(e -> e.getName().equals(site))
+                .filter(e -> e.getTimeUnit().equals(timeUnitFilter))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(list);
     }
-
-//    @GetMapping("/data/performance")
-//    public ResponseEntity<List<EventHistory>> performance() {
-//
-//        List<EventHistory> list = rhe.findAll().stream()
-//                .collect(Collectors.toList());
-//
-//        return ResponseEntity.ok(list);
-//    }
-
 
     @GetMapping("/data/events/{site}/last")
     public ResponseEntity<Event> eventsLast(@PathVariable String site) {
@@ -91,8 +83,6 @@ public class StatController {
 
         return ResponseEntity.ok(list);
     }
-
-
 
     @GetMapping("/data/events")
     public ResponseEntity<List<Event>> events(@RequestParam String strUnit, @RequestParam int count) {
