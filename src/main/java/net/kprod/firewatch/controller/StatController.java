@@ -1,9 +1,11 @@
 package net.kprod.firewatch.controller;
 
+import net.kprod.firewatch.data.WatchedElement;
 import net.kprod.firewatch.persistence.Event;
 import net.kprod.firewatch.persistence.EventHistory;
 import net.kprod.firewatch.persistence.RepositoryEvent;
 import net.kprod.firewatch.persistence.RepositoryHistoryEvent;
+import net.kprod.firewatch.service.Configure;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,26 +24,28 @@ public class StatController {
     @Autowired
     private RepositoryHistoryEvent rhe;
 
-    @GetMapping("/data/performance/last")
-    public ResponseEntity<EventHistory> performanceLast() {
+    @Autowired
+    private Configure configure;
+
+    @GetMapping("/data/sites/names")
+    List<String> sites() {
+        return configure.getListCC().stream()
+                .map(WatchedElement::getName)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/data/performance/{site}/last")
+    public ResponseEntity<EventHistory> performanceLast(@PathVariable String site) {
 
         EventHistory eh = rhe.findAll().stream()
+                .filter(e -> e.getName().equals(site))
                 .sorted(Comparator.comparing(EventHistory::getId).reversed())
                 .findFirst().get();
 
         return ResponseEntity.ok(eh);
     }
 
-    @GetMapping("/data/performance")
-    public ResponseEntity<List<EventHistory>> performance() {
-
-        List<EventHistory> list = rhe.findAll().stream()
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(list);
-    }
-
-    @GetMapping("/data/performance/{site}")
+    @GetMapping("/data/performance/{site}/all")
     public ResponseEntity<List<EventHistory>> performance(@PathVariable String site) {
 
         List<EventHistory> list = rhe.findAll().stream()
@@ -51,14 +55,25 @@ public class StatController {
         return ResponseEntity.ok(list);
     }
 
-    @GetMapping("/data/events/last")
-    public ResponseEntity<Event> eventsLast() {
+//    @GetMapping("/data/performance")
+//    public ResponseEntity<List<EventHistory>> performance() {
+//
+//        List<EventHistory> list = rhe.findAll().stream()
+//                .collect(Collectors.toList());
+//
+//        return ResponseEntity.ok(list);
+//    }
 
-        Event e = rh.findAll().stream()
+
+    @GetMapping("/data/events/{site}/last")
+    public ResponseEntity<Event> eventsLast(@PathVariable String site) {
+
+        Event ev = rh.findAll().stream()
+                .filter(e -> e.getName().equals(site))
                 .sorted(Comparator.comparing(Event::getId).reversed())
                 .findFirst().get();
 
-        return ResponseEntity.ok(e);
+        return ResponseEntity.ok(ev);
     }
 
     @GetMapping("/data/events/{site}")
