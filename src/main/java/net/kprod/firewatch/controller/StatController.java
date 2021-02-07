@@ -40,6 +40,7 @@ public class StatController {
 
         EventHistory eh = rhe.findAll().stream()
                 .filter(e -> e.getName().equals(site))
+                .filter(e -> e.getTimeUnit().equals(TimeUnit.event))
                 .sorted(Comparator.comparing(EventHistory::getId).reversed())
                 .findFirst().get();
 
